@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './layouts/Layout';
+import PublicLayout from './layouts/PublicLayout';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import FoodLog from './pages/FoodLog';
@@ -29,26 +30,31 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Home />} />
-            <Route path="dashboard" element={
+          {/* Public Routes */}
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+          </Route>
+
+          {/* Protected App Routes */}
+          <Route element={<Layout />}>
+            <Route path="/dashboard" element={
               <RequireAuth>
                 <Dashboard />
               </RequireAuth>
             } />
-            <Route path="food-log" element={
+            <Route path="/food-log" element={
               <RequireAuth>
                 <FoodLog />
               </RequireAuth>
             } />
-            <Route path="insights" element={
+            <Route path="/insights" element={
               <RequireAuth>
                 <Insights />
               </RequireAuth>
             } />
-            <Route path="profile" element={
+            <Route path="/profile" element={
               <RequireAuth>
                 <Profile />
               </RequireAuth>

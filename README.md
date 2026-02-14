@@ -30,6 +30,10 @@ This project is a modern full-stack application composed of two main parts:
 *   **Database**: **SQLite** + [SQLAlchemy](https://www.sqlalchemy.org/) for robust and lightweight data storage.
 *   **Authentication**: **JWT** (JSON Web Tokens) + **Bcrypt** for secure, stateless user sessions.
 
+### **App Server (`server`)**
+*   **Runtime**: [Node.js](https://nodejs.org/) implementation for auxiliary services.
+*   **Features**: SMS Notifications (Twilio) and Alert Management.
+
 ---
 
 ## 📚 Full Tutorial & Setup Guide
@@ -101,6 +105,28 @@ The frontend provides the user interface for interacting with the application.
     npm run dev
     ```
     ✅ The application should now be accessible at `http://localhost:5173`.
+
+### 4️⃣ App Server Setup (`server`)
+
+The App Server handles notifications and alerts.
+
+1.  **Open a new terminal window.**
+
+2.  **Navigate to the server directory:**
+    ```bash
+    cd server
+    ```
+
+3.  **Install Node dependencies:**
+    ```bash
+    npm install
+    ```
+
+4.  **Start the Server:**
+    ```bash
+    npm start
+    ```
+    ✅ The server should now be running at `http://localhost:3001`.
 
 ---
 

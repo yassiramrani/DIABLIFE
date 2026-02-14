@@ -1,86 +1,99 @@
-# FoodVision: Automated Food Detection Using YOLOv8
+# DiaBLife AI Backend (FoodVision)
 
-## Project Overview
-FoodVision is a deep learning-based food detection system that utilizes YOLOv8 to identify and classify various food items in images. The system is capable of detecting 55 different food classes with a focus on fruits and vegetables, making it useful for dietary monitoring and nutritional analysis.
+The **FoodVision** component is the intelligent core of DiaBLife. It exposes a high-performance API that leverages **Google's Gemini 1.5 Flash** model to analyze food images, estimate carbohydrate content, and provide personalized insulin dosing advice.
 
-## Features
-- Real-time food detection using YOLOv8
-- Support for 55 different food classes
-- Calorie estimation per 100g of detected food items
-- Web interface using Streamlit
-- Support for both image upload and camera capture
-- Bounding box visualization with confidence scores
+## 🏗️ Architecture
 
-## Model Architecture
-- Base model: YOLOv8n (nano version)
-- Input size: 640x640 pixels
-- Batch size: 32
-- Learning rate: 3e-4
-- Training epochs: 45
+*   **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
+*   **AI Engine**: Google Gemini 1.5 Flash (via `google-generativeai`)
+*   **Authentication**: Firebase Admin SDK / Custom JWT verification
+*   **Image Processing**: PIL (Python Imaging Library)
 
-## Performance Metrics
-- mAP50: ~0.8 (80% accuracy at 50% IoU)
-- Precision: ~0.8
-- Recall: ~0.75
+## 🚀 Setup & Run
 
-## Installation
+### 1. Prerequisites
+*   Python 3.10+
+*   A Google Cloud Project with Gemini API enabled.
+*   A Firebase project (for authentication).
 
-1. Clone the repository:
+### 2. Installation
+
+Navigate to the `FoodVision` directory and set up your environment:
+
 ```bash
-git clone git@github.com:2302660/aai3001_final_project.git
-cd aai3001_final_project
-```
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-2. Install the required dependencies:
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-## Usage
+### 3. Configuration
 
-1. Run the Streamlit application:
+Create a `.env` file in the `FoodVision` directory with your API keys:
+
+```env
+GOOGLE_API_KEY=your_gemini_api_key_here
+FIREBASE_WEB_API_KEY=your_firebase_api_key_here
+```
+
+### 4. Running the Server
+
+Start the FastAPI server:
+
+```bash
+python main.py
+```
+
+The API will be available at `http://localhost:8000`.
+You can access the interactive API docs at `http://localhost:8000/docs`.
+
+## 🔌 API Endpoints
+
+### `POST /analyze-meal/`
+Uploads a meal image for AI analysis.
+
+*   **Headers**: `Authorization: Bearer <FIREBASE_ID_TOKEN>`
+*   **Body**: `multipart/form-data` with `file` (image).
+*   **Response**: JSON containing:
+    *   `meal_summary`: Description of the meal.
+    *   `total_carbs_est`: Estimated total carbohydrates (g).
+    *   `components`: List of identified food items with portions and carb counts.
+    *   `diasense_advice`: Glycemic prediction and bolus strategy.
+
+---
+
+## 🏛️ Legacy Prototype (YOLOv8)
+
+*The following section describes the initial prototype of this project, which used a local YOLOv8 model. This has been superseded by the Gemini-based implementation but is kept here for reference.*
+
+### Automated Food Detection Using YOLOv8
+
+**FoodVision** (Legacy) is a deep learning-based food detection system that utilizes YOLOv8 to identify and classify various food items in images. The system is capable of detecting 55 different food classes.
+
+#### Features
+- Real-time food detection using YOLOv8
+- Support for 55 different food classes
+- Calorie estimation per 100g of detected food items
+- Web interface using Streamlit (`Sapp.py`)
+- Support for both image upload and camera capture
+
+#### Usage (Legacy)
+To run the legacy Streamlit app:
 ```bash
 streamlit run Sapp.py
 ```
 
-2. Use the web interface to:
-   - Upload images or capture them using your camera
-   - View detected food items with bounding boxes
-   - See confidence scores and calorie information
-
-## Project Structure
-```
-.
-├── Model.ipynb         # Notebook for model training and evaluation
-├── cal.py              # Core calorie calculation and detection functions
-├── Sapp.py             # Streamlit web application
-├── best.pt             # Trained model weights (not included in repo)
-└── README.md           # Project documentation
-```
-
-## Supported Food Classes
+#### Supported Food Classes
 The model can detect 55 different food items including:
 - Green foods: asparagus, avocados, broccoli, cabbage, etc.
 - White/Beige foods: banana, cauliflower, garlic, mushroom, etc.
 - Purple/Red foods: beetroot, blackberry, cherry, eggplant, etc.
 - Orange/Yellow foods: apricot, carrot, corn, mango, etc.
 
-## Live Demo
-You can try out the live demo at:
-- [Hugging Face Space](https://nightey3s-foodvision.hf.space)
-- [Project Files](https://huggingface.co/spaces/nightey3s/FoodVision/tree/main)
-
-## Team Members
+#### Team Members (Original Project)
 - Brian Tham
 - Hong Ziyang
 - Javier Si Zhao Hong
 - Timothy Zoe Delaya
-
-## Course Information
-AAI3001 Deep Learning and Computer Vision, Trimester 1, 2024
-Singapore Institute of Technology
-
-## Future Work
-- Expand the dataset to include more food categories.
-- Implement portion size estimation.
-- Compare uploaded food images with dietary recommendations.

@@ -80,6 +80,22 @@ DiabLife is a comprehensive web application designed to help individuals with di
     ```
     Access the app at `http://localhost:5173`.
 
+### App Server Setup (server)
+
+For notifications and alerts, you also need to run the Node.js server.
+
+1.  Navigate to the `server` directory (in the project root):
+    ```bash
+    cd ../server
+    ```
+
+2.  Install dependencies and start:
+    ```bash
+    npm install
+    npm start
+    ```
+    The server will run at `http://localhost:3001`.
+
 ## Usage Guide
 
 1.  **Sign Up**: Create a new account with your email and password.

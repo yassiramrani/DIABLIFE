@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Search, ArrowRight, Check, AlertTriangle, Info, Utensils, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import SafeFoodsList from '../components/SafeFoodsList';
 import { foodDatabase } from '../data/mockData';
+import { AUTH_API_BASE } from '../lib/env';
 
 // Helper badge component
 function Badge({ variant = "default", className, children }) {
@@ -34,6 +36,8 @@ export default function FoodLog() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [prediction, setPrediction] = useState(null);
     const [error, setError] = useState(null);
+
+    const { user } = useAuth(); // Get user from context
 
     const handleSearch = (e) => {
         setSearchQuery(e.target.value);
@@ -69,15 +73,17 @@ export default function FoodLog() {
         setPrediction(null);
 
         try {
-            const token = localStorage.getItem('token');
-            if (!token) {
+            if (!user) {
                 throw new Error("You must be logged in to analyze meals.");
             }
+
+            const token = await user.getIdToken(); // Get Firebase ID Token
 
             if (selectedImage) {
                 const formData = new FormData();
                 formData.append('file', selectedImage);
 
+                // Start Python Backend: uvicorn main:app --reload --port 8000
                 const response = await fetch('http://localhost:8000/analyze-meal/', {
                     method: 'POST',
                     headers: {
@@ -87,12 +93,14 @@ export default function FoodLog() {
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Server error: ${response.status}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `Server error: ${response.status}`);
                 }
 
                 const data = await response.json();
                 const advice = data.diasense_advice;
 
+                // Map API response to UI State
                 setPrediction({
                     type: 'ai',
                     summary: data.meal_summary,
@@ -120,7 +128,7 @@ export default function FoodLog() {
 
         } catch (err) {
             console.error("Analysis failed:", err);
-            setError("Failed to analyze image. Ensure the backend is running.");
+            setError(err.message || "Failed to analyze image. Ensure the backend is running.");
         } finally {
             setIsAnalyzing(false);
         }

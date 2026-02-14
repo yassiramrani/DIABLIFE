@@ -1,21 +1,37 @@
-import { useState, useEffect } from 'react';
-import { Plus, Footprints, Syringe, Droplet, Activity as ActivityIcon, Utensils, Zap as StressIcon } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Footprints, Syringe, Droplet, Activity as ActivityIcon, Utensils, Zap as StressIcon, Phone, AlertTriangle } from 'lucide-react';
 import GlucoseChart from '../components/GlucoseChart';
 import MetabolicFactors from '../components/MetabolicFactors';
 import AIBrainVisual from '../components/AIBrainVisual';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
-import { generateGlucoseData, metrics } from '../data/mockData';
+import { generateGlucoseData, metrics, userData } from '../data/mockData';
+import { triggerEmergencyCall } from '../lib/api';
+
+const CRITICAL_DURATION_MINUTES = 15;
+const [LOW_THRESHOLD, HIGH_THRESHOLD] = userData.targetRange;
+
+function getCriticalType(glucose) {
+    if (glucose === '--' || typeof glucose !== 'number') return null;
+    if (glucose < LOW_THRESHOLD) return 'low';
+    if (glucose > HIGH_THRESHOLD) return 'high';
+    return null;
+}
 
 export default function Dashboard() {
     const [glucoseData, setGlucoseData] = useState([]);
+    const [criticalMinutes, setCriticalMinutes] = useState(0);
+    const [emergencyCallSent, setEmergencyCallSent] = useState(false);
+    const [emergencyCalling, setEmergencyCalling] = useState(false);
+    const [emergencyError, setEmergencyError] = useState(null);
+    const criticalTypeRef = useRef(null);
+    const timerRef = useRef(null);
 
     // Simulate real-time updates
     useEffect(() => {
         const data = generateGlucoseData();
         setGlucoseData(data);
-        // In a real app, this would be a WebSocket or polling
     }, []);
 
     const currentGlucose = glucoseData.length > 0 ? glucoseData[glucoseData.length - 1].value : '--';
@@ -23,8 +39,101 @@ export default function Dashboard() {
         ? (glucoseData[glucoseData.length - 1].value - glucoseData[glucoseData.length - 2].value) > 0 ? '↗' : '↘'
         : '→';
 
+    const criticalType = getCriticalType(currentGlucose);
+    const isCritical = criticalType !== null;
+    const emergencyCalledRef = useRef(false);
+
+    // Track duration in critical range and trigger emergency call at 15 min
+    useEffect(() => {
+        if (!isCritical) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            timerRef.current = null;
+            setCriticalMinutes(0);
+            setEmergencyCallSent(false);
+            emergencyCalledRef.current = false;
+            criticalTypeRef.current = null;
+            return;
+        }
+        criticalTypeRef.current = criticalType;
+
+        if (!timerRef.current) {
+            timerRef.current = setInterval(() => {
+                setCriticalMinutes((m) => {
+                    const next = m + 1;
+                    if (next >= CRITICAL_DURATION_MINUTES && !emergencyCalledRef.current) {
+                        emergencyCalledRef.current = true;
+                        setEmergencyCallSent(true);
+                        triggerEmergencyCall(currentGlucose, next, criticalTypeRef.current).catch((err) => {
+                            setEmergencyError(err.message);
+                        });
+                    }
+                    return next;
+                });
+            }, 60 * 1000); // every 1 minute
+        }
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            timerRef.current = null;
+        };
+    }, [isCritical, currentGlucose]);
+
+    const handleCallEmergencyNow = async () => {
+        setEmergencyError(null);
+        setEmergencyCalling(true);
+        try {
+            await triggerEmergencyCall(currentGlucose, Math.max(criticalMinutes, 1), criticalType);
+            setEmergencyCallSent(true);
+        } catch (err) {
+            setEmergencyError(err.message);
+        } finally {
+            setEmergencyCalling(false);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Critical glucose emergency alert */}
+            {isCritical && (
+                <Card className="border-red-200 bg-red-50 shadow-md">
+                    <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 rounded-full bg-red-100">
+                                <AlertTriangle className="h-5 w-5 text-red-600" />
+                            </div>
+                            <div>
+                                <p className="font-semibold text-red-900">
+                                    {criticalType === 'low' ? 'Low' : 'High'} glucose alert
+                                </p>
+                                <p className="text-sm text-red-700 mt-0.5">
+                                    Current: {currentGlucose} mg/dL — {criticalType === 'low' ? 'Below' : 'Above'} target ({LOW_THRESHOLD}–{HIGH_THRESHOLD} mg/dL).
+                                    {criticalMinutes > 0 && (
+                                        <> Critical for {criticalMinutes} min. Emergency call {criticalMinutes >= CRITICAL_DURATION_MINUTES ? 'triggered.' : `will trigger after ${CRITICAL_DURATION_MINUTES} min.`}</>
+                                    )}
+                                </p>
+                                {emergencyError && (
+                                    <p className="text-sm text-red-600 mt-1">{emergencyError}</p>
+                                )}
+                            </div>
+                        </div>
+                        {!emergencyCallSent && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-red-300 text-red-700 hover:bg-red-100 shrink-0"
+                                onClick={handleCallEmergencyNow}
+                                disabled={emergencyCalling}
+                            >
+                                <Phone className="h-4 w-4 mr-2" />
+                                {emergencyCalling ? 'Calling…' : 'Call emergency now'}
+                            </Button>
+                        )}
+                        {emergencyCallSent && (
+                            <Badge className="bg-red-200 text-red-800 shrink-0">Emergency call sent</Badge>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -100,8 +209,17 @@ export default function Dashboard() {
                         <div className="text-xl font-medium text-primary-100 mb-6">
                             mg/dL <span className="text-2xl ml-2">{trend}</span>
                         </div>
-                        <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0 px-4 py-1.5 text-sm backdrop-blur-md">
-                            In Range
+                        <Badge
+                            variant="secondary"
+                            className={
+                                criticalType === 'low'
+                                    ? 'bg-amber-500/80 text-white border-0 px-4 py-1.5 text-sm'
+                                    : criticalType === 'high'
+                                    ? 'bg-red-500/80 text-white border-0 px-4 py-1.5 text-sm'
+                                    : 'bg-white/20 hover:bg-white/30 text-white border-0 px-4 py-1.5 text-sm backdrop-blur-md'
+                            }
+                        >
+                            {criticalType === 'low' ? 'Low' : criticalType === 'high' ? 'High' : 'In Range'}
                         </Badge>
                         <p className="mt-8 text-sm text-primary-100 text-center">
                             Predicted to stay stable for the next 2 hours based on recent activity.

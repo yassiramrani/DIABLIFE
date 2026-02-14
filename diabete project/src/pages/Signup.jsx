@@ -5,14 +5,17 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../components/ui/Card';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { createUserProfile } from '../lib/firestore';
 
 export default function Signup() {
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
+    const [diabetesType, setDiabetesType] = useState('Type 1');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { register, login } = useAuth(); // Import login here
+    const { register } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -20,17 +23,26 @@ export default function Signup() {
         setError('');
 
         if (password !== confirmPassword) {
-            return setError("Passwords ensure match");
+            return setError("Passwords do not match");
         }
 
         setIsLoading(true);
 
         try {
-            await register(email, password);
-            // Auto login after registration for better UX
-            await login(email, password);
+            // 1. Create Auth User
+            const userCredential = await register(email, password);
+            const user = userCredential.user;
+
+            // 2. Create Firestore Profile
+            await createUserProfile(user.uid, {
+                name,
+                email,
+                diabetesType
+            });
+
             navigate('/dashboard');
         } catch (err) {
+            console.error(err);
             setError(err.message);
         } finally {
             setIsLoading(false);
@@ -43,13 +55,27 @@ export default function Signup() {
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
                     <CardDescription>
-                        Enter your email below to create your account
+                        Enter your details below to create your account
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="email">
+                            <label className="text-sm font-medium leading-none" htmlFor="name">
+                                Full Name
+                            </label>
+                            <Input
+                                id="name"
+                                type="text"
+                                placeholder="John Doe"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none" htmlFor="email">
                                 Email
                             </label>
                             <Input
@@ -61,8 +87,28 @@ export default function Signup() {
                                 required
                             />
                         </div>
+
                         <div className="space-y-2">
-                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="password">
+                            <label className="text-sm font-medium leading-none" htmlFor="diabetesType">
+                                Diabetes Type
+                            </label>
+                            <select
+                                id="diabetesType"
+                                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={diabetesType}
+                                onChange={(e) => setDiabetesType(e.target.value)}
+                            >
+                                <option value="Type 1">Type 1</option>
+                                <option value="Type 2">Type 2</option>
+                                <option value="Gestational">Gestational</option>
+                                <option value="Prediabetes">Prediabetes</option>
+                                <option value="LADA">LADA</option>
+                                <option value="MODY">MODY</option>
+                            </select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium leading-none" htmlFor="password">
                                 Password
                             </label>
                             <Input
@@ -74,7 +120,7 @@ export default function Signup() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="confirmPassword">
+                            <label className="text-sm font-medium leading-none" htmlFor="confirmPassword">
                                 Confirm Password
                             </label>
                             <Input

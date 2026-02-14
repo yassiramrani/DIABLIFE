@@ -58,3 +58,35 @@ export const foodDatabase = [
     { id: 4, name: "Lentil Soup", carbs: 20, glycemicIndex: "Low", prediction: "Recommended" },
     { id: 5, name: "Pizza Slice", carbs: 35, glycemicIndex: "High", prediction: "Delayed Spike" },
 ];
+
+// --- Insights: weekly stats and user summary ---
+export const insightStats = {
+    period: "This week",
+    avgGlucose: 124,
+    avgGlucoseLastWeek: 131,
+    timeInRange: 85,
+    timeInRangeLastWeek: 78,
+    totalSpikes: 11,
+    totalLows: 2,
+    readingsLogged: 96,
+    bestDay: "Friday",
+    worstDay: "Wednesday",
+    trend: "improving", // improving | stable | worsening
+    streakDaysInRange: 3,
+};
+
+export const weeklyGlucoseData = [
+    { day: "Mon", short: "M", spikes: 2, avg: 118, timeInRange: 88, readings: 14 },
+    { day: "Tue", short: "T", spikes: 1, avg: 115, timeInRange: 92, readings: 14 },
+    { day: "Wed", short: "W", spikes: 4, avg: 145, timeInRange: 72, readings: 14 },
+    { day: "Thu", short: "T", spikes: 1, avg: 118, timeInRange: 86, readings: 14 },
+    { day: "Fri", short: "F", spikes: 0, avg: 110, timeInRange: 96, readings: 14 },
+    { day: "Sat", short: "S", spikes: 2, avg: 125, timeInRange: 82, readings: 14 },
+    { day: "Sun", short: "S", spikes: 1, avg: 112, timeInRange: 90, readings: 12 },
+];
+
+export const aiInsightSummary = {
+    weekly: "Your glucose stability has improved by 15% compared to last week. The spike on Wednesday correlates with high stress levels recorded.",
+    recommendation: "Keep up the good work with breakfast! Your post-meal readings are consistently in range when you eat oatmeal.",
+    highlight: "You had zero spikes on Friday — your best day this week.",
+};

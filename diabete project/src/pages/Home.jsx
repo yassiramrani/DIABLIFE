@@ -20,14 +20,14 @@ export default function Home() {
                     Take control of your diabetes with real-time monitoring, AI-driven nutrition insights, and personalized prediction models.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                    <Link to="/dashboard">
+                    <Link to="/signup">
                         <Button size="lg" className="w-full sm:w-auto text-lg px-8 h-14 rounded-2xl">
                             Start Tracking
                         </Button>
                     </Link>
-                    <Link to="/dashboard">
+                    <Link to="/login">
                         <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg px-8 h-14 rounded-2xl">
-                            View Demo Dashboard
+                            Sign In
                         </Button>
                     </Link>
                 </div>
