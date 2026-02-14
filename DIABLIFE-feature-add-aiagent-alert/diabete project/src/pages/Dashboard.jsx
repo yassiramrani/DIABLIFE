@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { getUserProfile } from '../lib/firestore';
 import { Plus, Footprints, Syringe, Droplet, Activity as ActivityIcon, Utensils, Zap as StressIcon, Phone, AlertTriangle } from 'lucide-react';
 import GlucoseChart from '../components/GlucoseChart';
 import MetabolicFactors from '../components/MetabolicFactors';
@@ -22,8 +20,6 @@ function getCriticalType(glucose) {
 }
 
 export default function Dashboard() {
-    const { user } = useAuth();
-    const [userName, setUserName] = useState(user?.displayName || 'User');
     const [glucoseData, setGlucoseData] = useState([]);
     const [criticalMinutes, setCriticalMinutes] = useState(0);
     const [emergencyCallSent, setEmergencyCallSent] = useState(false);
@@ -31,24 +27,6 @@ export default function Dashboard() {
     const [emergencyError, setEmergencyError] = useState(null);
     const criticalTypeRef = useRef(null);
     const timerRef = useRef(null);
-
-    useEffect(() => {
-        const fetchUserData = async () => {
-            if (user?.uid) {
-                try {
-                    const profile = await getUserProfile(user.uid);
-                    if (profile?.name) {
-                        setUserName(profile.name);
-                    } else if (user.displayName) {
-                        setUserName(user.displayName);
-                    }
-                } catch (error) {
-                    console.error("Error fetching user profile:", error);
-                }
-            }
-        };
-        fetchUserData();
-    }, [user]);
 
     // Simulate real-time updates
     useEffect(() => {
@@ -86,11 +64,7 @@ export default function Dashboard() {
                         emergencyCalledRef.current = true;
                         setEmergencyCallSent(true);
                         triggerEmergencyCall(currentGlucose, next, criticalTypeRef.current).catch((err) => {
-                            // Enhance error message for end user
-                            const msg = err.message.includes('503')
-                                ? "Emergency service unavailable (Check server config)"
-                                : err.message;
-                            setEmergencyError(msg);
+                            setEmergencyError(err.message);
                         });
                     }
                     return next;
@@ -110,11 +84,7 @@ export default function Dashboard() {
             await triggerEmergencyCall(currentGlucose, Math.max(criticalMinutes, 1), criticalType);
             setEmergencyCallSent(true);
         } catch (err) {
-            console.error(err);
-            const msg = err.message.includes('503') || err.message.includes('Failed to fetch')
-                ? "Emergency service unavailable. (Is the backend server running and configured?)"
-                : err.message;
-            setEmergencyError(msg);
+            setEmergencyError(err.message);
         } finally {
             setEmergencyCalling(false);
         }
@@ -141,9 +111,7 @@ export default function Dashboard() {
                                     )}
                                 </p>
                                 {emergencyError && (
-                                    <p className="text-sm font-bold text-red-600 mt-2 bg-red-100 p-2 rounded border border-red-200">
-                                        ⚠️ {emergencyError}
-                                    </p>
+                                    <p className="text-sm text-red-600 mt-1">{emergencyError}</p>
                                 )}
                             </div>
                         </div>
@@ -170,7 +138,7 @@ export default function Dashboard() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h2>
-                    <p className="text-slate-500">Welcome back, {userName}</p>
+                    <p className="text-slate-500">Welcome back, Salaheddine</p>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
                     <Button size="sm" className="flex-1 md:flex-none gap-2">
@@ -247,8 +215,8 @@ export default function Dashboard() {
                                 criticalType === 'low'
                                     ? 'bg-amber-500/80 text-white border-0 px-4 py-1.5 text-sm'
                                     : criticalType === 'high'
-                                        ? 'bg-red-500/80 text-white border-0 px-4 py-1.5 text-sm'
-                                        : 'bg-white/20 hover:bg-white/30 text-white border-0 px-4 py-1.5 text-sm backdrop-blur-md'
+                                    ? 'bg-red-500/80 text-white border-0 px-4 py-1.5 text-sm'
+                                    : 'bg-white/20 hover:bg-white/30 text-white border-0 px-4 py-1.5 text-sm backdrop-blur-md'
                             }
                         >
                             {criticalType === 'low' ? 'Low' : criticalType === 'high' ? 'High' : 'In Range'}

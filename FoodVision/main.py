@@ -72,7 +72,7 @@ class AnalysisResponse(BaseModel):
     status: str
 
 # Config modèle Gemini
-model = genai.GenerativeModel('gemini-flash-latest') # Confirmed available in list_models
+model = genai.GenerativeModel('gemini-2.5-flash') # Updated to 2.5 per user request
 
 # --- PROMPT SYSTÈME ---
 DIASENSE_SYSTEM_PROMPT = """

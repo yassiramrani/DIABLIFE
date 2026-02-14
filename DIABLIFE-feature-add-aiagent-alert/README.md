@@ -30,10 +30,6 @@ This project is a modern full-stack application composed of two main parts:
 *   **Database**: **SQLite** + [SQLAlchemy](https://www.sqlalchemy.org/) for robust and lightweight data storage.
 *   **Authentication**: **JWT** (JSON Web Tokens) + **Bcrypt** for secure, stateless user sessions.
 
-### **App Server (`server`)**
-*   **Runtime**: [Node.js](https://nodejs.org/) implementation for auxiliary services.
-*   **Features**: SMS Notifications (Twilio) and Alert Management.
-
 ---
 
 ## 📚 Full Tutorial & Setup Guide
@@ -42,7 +38,6 @@ Follow these steps to get DiaBLife running on your local machine.
 
 ### Prerequisites
 1.  **Node.js** (v18 or higher) & **npm**.
-2.  **Python** (v3.10 or higher) & **pip** (`sudo apt install python3-pip`).
 2.  **Python** (v3.10 or higher).
 3.  A **Google Cloud API Key** with access to Gemini API.
 
@@ -81,7 +76,7 @@ The backend handles the AI logic, database, and authentication.
 
 5.  **Start the Backend Server:**
     ```bash
-    python3 -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+    python main.py
     ```
     ✅ The server should now be running at `http://localhost:8000`. You can test it by visiting `http://localhost:8000/docs` to see the interactive API documentation.
 
@@ -106,28 +101,6 @@ The frontend provides the user interface for interacting with the application.
     npm run dev
     ```
     ✅ The application should now be accessible at `http://localhost:5173`.
-
-### 4️⃣ App Server Setup (`server`)
-
-The App Server handles notifications and alerts.
-
-1.  **Open a new terminal window.**
-
-2.  **Navigate to the server directory:**
-    ```bash
-    cd server
-    ```
-
-3.  **Install Node dependencies:**
-    ```bash
-    npm install
-    ```
-
-4.  **Start the Server:**
-    ```bash
-    npm start
-    ```
-    ✅ The server should now be running at `http://localhost:3001`.
 
 ---
 
