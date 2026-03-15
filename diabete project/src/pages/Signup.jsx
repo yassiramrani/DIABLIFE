@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { updateProfile } from 'firebase/auth';
+import { updateProfile, deleteUser } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -34,17 +34,23 @@ export default function Signup() {
             const userCredential = await register(email, password);
             const user = userCredential.user;
 
-            // 1.5 Set Display Name (so it's available immediately)
-            await updateProfile(user, { displayName: name });
+            try {
+                // 1.5 Set Display Name
+                await updateProfile(user, { displayName: name });
 
-            // 2. Create Firestore Profile
-            await createUserProfile(user.uid, {
-                name,
-                email,
-                diabetesType
-            });
+                // 2. Create Firestore Profile
+                await createUserProfile(user.uid, {
+                    name,
+                    email,
+                    diabetesType
+                });
 
-            navigate('/dashboard');
+                navigate('/dashboard');
+            } catch (profileErr) {
+                // Rollback: If Firestore fails (e.g. rules issue), delete the auth user
+                await deleteUser(user).catch(console.error);
+                throw new Error("Could not construct your profile (Database Error). The account creation was rolled back.");
+            }
         } catch (err) {
             console.error(err);
             setError(err.message);

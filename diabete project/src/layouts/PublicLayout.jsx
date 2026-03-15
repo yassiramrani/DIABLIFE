@@ -14,7 +14,7 @@ export default function PublicLayout() {
                         <div className="h-8 w-8 rounded-lg bg-primary-500 flex items-center justify-center">
                             <Activity className="h-5 w-5 text-white" />
                         </div>
-                        <span className="font-bold text-xl text-slate-800">GlucoSmart</span>
+                        <span className="font-bold text-xl text-slate-800 tracking-tight">DIABLIFE</span>
                     </Link>
 
                     <nav className="flex items-center gap-4">

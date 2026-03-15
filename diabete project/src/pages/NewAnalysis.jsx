@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Search, ArrowRight, Check, AlertTriangle, Info, Utensils, Activity } from 'lucide-react';
+import { Search, ArrowRight, Check, AlertTriangle, Info, Utensils, Activity, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 import SafeFoodsList from '../components/SafeFoodsList';
 import { foodDatabase } from '../data/mockData';
-import { AUTH_API_BASE } from '../lib/env';
+import { logMeal, getTodayTotals } from '../lib/foodLogService';
+import { getUserProfile } from '../lib/firestore';
 
 // Helper badge component
 function Badge({ variant = "default", className, children }) {
@@ -28,16 +28,41 @@ function Badge({ variant = "default", className, children }) {
     );
 }
 
-export default function FoodLog() {
+export default function NewAnalysis() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFood, setSelectedFood] = useState(null);
     const [selectedImage, setSelectedImage] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [prediction, setPrediction] = useState(null);
     const [error, setError] = useState(null);
+    const [successMsg, setSuccessMsg] = useState(null);
 
     const { user } = useAuth(); // Get user from context
+    
+    // User limits state
+    const [userLimits, setUserLimits] = useState({ dailyCarbsLimit: 150, dailySugarLimit: 30 });
+    const [todayTotals, setTodayTotals] = useState({ totalCarbs: 0, totalSugar: 0 });
+
+    useEffect(() => {
+        if (user) {
+            getUserProfile(user.uid)
+                .then(profile => {
+                    if (profile) setUserLimits({ 
+                        dailyCarbsLimit: profile.dailyCarbsLimit || 150, 
+                        dailySugarLimit: profile.dailySugarLimit || 30 
+                    });
+                })
+                .catch(err => console.error("Error fetching profile limits:", err));
+                
+            getTodayTotals(user.uid)
+                .then(totals => {
+                    setTodayTotals(totals);
+                })
+                .catch(err => console.error("Error fetching today totals:", err));
+        }
+    }, [user]);
 
     const handleSearch = (e) => {
         setSearchQuery(e.target.value);
@@ -46,6 +71,7 @@ export default function FoodLog() {
         setPreviewUrl(null);
         setPrediction(null);
         setError(null);
+        setSuccessMsg(null);
     };
 
     const handleSelectFood = (food) => {
@@ -53,6 +79,7 @@ export default function FoodLog() {
         setSearchQuery(food.name);
         setPrediction(null);
         setError(null);
+        setSuccessMsg(null);
     };
 
     const handleImageUpload = (e) => {
@@ -63,6 +90,7 @@ export default function FoodLog() {
             setSelectedFood(null); // Clear manual selection if image is uploaded
             setPrediction(null);
             setError(null);
+            setSuccessMsg(null);
         }
     };
 
@@ -71,6 +99,7 @@ export default function FoodLog() {
         setIsAnalyzing(true);
         setError(null);
         setPrediction(null);
+        setSuccessMsg(null);
 
         try {
             if (!user) {
@@ -110,6 +139,7 @@ export default function FoodLog() {
                     bolusStrategy: advice.suggested_bolus_strategy,
                     components: data.components,
                     score: advice.risk_level?.toLowerCase().includes('high') ? 15 : advice.risk_level?.toLowerCase().includes('medium') ? 50 : 85,
+                    isSaved: false
                 });
             } else {
                 // Mock analysis for manual selection
@@ -118,10 +148,12 @@ export default function FoodLog() {
                     setPrediction({
                         type: 'manual',
                         item: selectedFood,
+                        totalCarbs: selectedFood.carbs,
                         score: selectedFood.glycemicIndex === 'High' ? 15 : selectedFood.glycemicIndex === 'Medium' ? 35 : 85,
                         advice: selectedFood.glycemicIndex === 'High'
                             ? "Consider adding protein or fiber to blunt the spike."
-                            : "Great choice! This should have a minimal impact on your glucose."
+                            : "Great choice! This should have a minimal impact on your glucose.",
+                        isSaved: false
                     });
                 }, 1500);
             }
@@ -131,6 +163,42 @@ export default function FoodLog() {
             setError(err.message || "Failed to analyze image. Ensure the backend is running.");
         } finally {
             setIsAnalyzing(false);
+        }
+    };
+
+    const handleSaveMeal = async () => {
+        if (!prediction || !user) return;
+        setIsSaving(true);
+        try {
+            // Unify structure for history
+            const logData = prediction.type === 'ai' ? {
+                meal_summary: prediction.summary,
+                total_carbs_est: prediction.totalCarbs,
+                components: prediction.components,
+                diasense_advice: {
+                    risk_level: prediction.riskLevel,
+                    prediction: prediction.predictionText,
+                    suggested_bolus_strategy: prediction.bolusStrategy
+                }
+            } : {
+                meal_summary: prediction.item.name,
+                totalCarbs: prediction.item.carbs,
+                riskLevel: prediction.item.glycemicIndex,
+                advice: prediction.advice
+            };
+
+            await logMeal(user.uid, logData);
+            setSuccessMsg("Meal saved to your history!");
+            // Update local state without fetching again
+            setTodayTotals(prev => ({
+                totalCarbs: prev.totalCarbs + prediction.totalCarbs,
+                totalSugar: prev.totalSugar // (ignoring sugar computation here for simplicity)
+            }));
+            setPrediction(prev => ({...prev, isSaved: true}));
+        } catch (err) {
+            setError("Failed to save meal.");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -154,7 +222,7 @@ export default function FoodLog() {
     return (
         <div className="max-w-3xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 pb-12">
             <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold tracking-tight">Food Logger</h2>
+                <h2 className="text-3xl font-bold tracking-tight">New Analysis</h2>
                 <p className="text-slate-500">Log your meals and get AI-powered glucose predictions.</p>
             </div>
 
@@ -252,6 +320,20 @@ export default function FoodLog() {
 
                     {prediction && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
+                            
+                            {/* Warnings based on limits */}
+                            {prediction.totalCarbs + todayTotals.totalCarbs > userLimits.dailyCarbsLimit && (
+                                <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg flex items-start gap-3 shadow-sm">
+                                    <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-red-600" />
+                                    <div>
+                                        <h4 className="font-bold text-red-900">Daily Goal Exceeded!</h4>
+                                        <p className="text-sm mt-1 text-red-700">
+                                            This meal adds <b>{prediction.totalCarbs}g</b> of carbs, bringing your daily total up to <b>{prediction.totalCarbs + todayTotals.totalCarbs}g</b>. Your daily target is <b>{userLimits.dailyCarbsLimit}g</b>.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* AI Analysis Result */}
                             {prediction.type === 'ai' ? (
                                 <>
@@ -299,6 +381,16 @@ export default function FoodLog() {
                                                     {prediction.bolusStrategy}
                                                 </div>
                                             </div>
+
+                                            {!prediction.isSaved ? (
+                                                <Button onClick={handleSaveMeal} isLoading={isSaving} className="w-full mt-4" variant="default">
+                                                    <Save className="mr-2 h-4 w-4" /> Save to History
+                                                </Button>
+                                            ) : (
+                                                <div className="p-3 bg-green-50 text-green-700 rounded-md border border-green-200 flex items-center justify-center font-medium mt-4">
+                                                    <Check className="mr-2 h-4 w-4" /> Saved Successfully
+                                                </div>
+                                            )}
                                         </CardContent>
                                     </Card>
 
@@ -343,6 +435,15 @@ export default function FoodLog() {
                                             <span>Est. Carbs: {prediction.item.carbs}g</span>
                                             <span>Glycemic Index: {prediction.item.glycemicIndex}</span>
                                         </div>
+                                        {!prediction.isSaved ? (
+                                            <Button onClick={handleSaveMeal} isLoading={isSaving} className="w-full mt-4" variant="outline">
+                                                <Save className="mr-2 h-4 w-4" /> Save to History
+                                            </Button>
+                                        ) : (
+                                            <div className="p-3 bg-green-50 text-green-700 rounded-md border border-green-200 flex items-center justify-center font-medium mt-4">
+                                                <Check className="mr-2 h-4 w-4" /> Saved Successfully
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                             )}
@@ -356,6 +457,14 @@ export default function FoodLog() {
                     <AlertTriangle className="h-5 w-5" />
                     <span>{error}</span>
                     <button onClick={() => setError(null)} className="ml-4 text-red-400 hover:text-red-600 font-bold">&times;</button>
+                </div>
+            )}
+            
+            {successMsg && (
+                <div className="fixed bottom-4 right-4 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-lg shadow-xl animate-in slide-in-from-bottom-2 z-50 flex items-center gap-3">
+                    <Check className="h-5 w-5" />
+                    <span>{successMsg}</span>
+                    <button onClick={() => setSuccessMsg(null)} className="ml-4 text-green-600 hover:text-green-800 font-bold">&times;</button>
                 </div>
             )}
 

@@ -13,7 +13,19 @@ npm start
 
 This will start the server on [http://localhost:3001](http://localhost:3001).
 
-## 2. Start the Frontend Application (User Interface)
+## 2. Start the AI Backend Server (for Meal Analysis)
+
+Open a **separate** terminal window and run:
+
+```bash
+cd FoodVision
+source venv/bin/activate
+uvicorn main:app --reload --port 8000
+```
+
+This will start the AI server on [http://localhost:8000](http://localhost:8000).
+
+## 3. Start the Frontend Application (User Interface)
 
 Open a **separate** terminal window and run:
 
@@ -24,7 +36,7 @@ npm run dev
 
 This will start the React app on [http://localhost:5173](http://localhost:5173).
 
-## 3. Verify
+## 4. Verify
 
 - Open [http://localhost:5173](http://localhost:5173) in your browser.
 - Try to **Sign Up** or **Sign In** to test the new Firebase integration.

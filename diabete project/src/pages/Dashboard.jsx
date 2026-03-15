@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getUserProfile } from '../lib/firestore';
+import { getTodayTotals } from '../lib/foodLogService';
 import { Plus, Footprints, Syringe, Droplet, Activity as ActivityIcon, Utensils, Zap as StressIcon, Phone, AlertTriangle } from 'lucide-react';
 import GlucoseChart from '../components/GlucoseChart';
 import MetabolicFactors from '../components/MetabolicFactors';
@@ -24,6 +25,8 @@ function getCriticalType(glucose) {
 export default function Dashboard() {
     const { user } = useAuth();
     const [userName, setUserName] = useState(user?.displayName || 'User');
+    const [userLimits, setUserLimits] = useState({ dailyCarbsLimit: 150, dailySugarLimit: 30 });
+    const [todayTotals, setTodayTotals] = useState({ totalCarbs: 0, totalSugar: 0 });
     const [glucoseData, setGlucoseData] = useState([]);
     const [criticalMinutes, setCriticalMinutes] = useState(0);
     const [emergencyCallSent, setEmergencyCallSent] = useState(false);
@@ -37,11 +40,17 @@ export default function Dashboard() {
             if (user?.uid) {
                 try {
                     const profile = await getUserProfile(user.uid);
-                    if (profile?.name) {
-                        setUserName(profile.name);
+                    if (profile) {
+                        setUserName(profile.name || user.displayName || 'User');
+                        setUserLimits({
+                            dailyCarbsLimit: profile.dailyCarbsLimit || 150,
+                            dailySugarLimit: profile.dailySugarLimit || 30
+                        });
                     } else if (user.displayName) {
                         setUserName(user.displayName);
                     }
+                    const totals = await getTodayTotals(user.uid);
+                    setTodayTotals(totals);
                 } catch (error) {
                     console.error("Error fetching user profile:", error);
                 }
@@ -121,184 +130,218 @@ export default function Dashboard() {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Critical glucose emergency alert */}
-            {isCritical && (
-                <Card className="border-red-200 bg-red-50 shadow-md">
-                    <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-full bg-red-100">
-                                <AlertTriangle className="h-5 w-5 text-red-600" />
-                            </div>
-                            <div>
-                                <p className="font-semibold text-red-900">
-                                    {criticalType === 'low' ? 'Low' : 'High'} glucose alert
-                                </p>
-                                <p className="text-sm text-red-700 mt-0.5">
-                                    Current: {currentGlucose} mg/dL — {criticalType === 'low' ? 'Below' : 'Above'} target ({LOW_THRESHOLD}–{HIGH_THRESHOLD} mg/dL).
-                                    {criticalMinutes > 0 && (
-                                        <> Critical for {criticalMinutes} min. Emergency call {criticalMinutes >= CRITICAL_DURATION_MINUTES ? 'triggered.' : `will trigger after ${CRITICAL_DURATION_MINUTES} min.`}</>
-                                    )}
-                                </p>
-                                {emergencyError && (
-                                    <p className="text-sm font-bold text-red-600 mt-2 bg-red-100 p-2 rounded border border-red-200">
-                                        ⚠️ {emergencyError}
+        <div className="flex flex-col lg:flex-row gap-6 animate-in fade-in duration-500 w-full mb-8">
+            
+            {/* Left Column - Main Dashboard Area */}
+            <div className="flex-1 space-y-6">
+                
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+                    <div>
+                        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                            Good Morning, {userName}
+                        </h2>
+                        <div className="flex items-center text-sm text-slate-500 mt-1">
+                            <span>Last sync: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span className="mx-2">•</span>
+                            <span className="text-emerald-600 font-medium">Pump connected</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Critical glucose emergency alert (Keep existing functionality, adapt style) */}
+                {isCritical && (
+                    <Card className="border-red-200 bg-red-50 shadow-sm rounded-xl overflow-hidden">
+                        <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 rounded-full bg-red-100 flex-shrink-0">
+                                    <AlertTriangle className="h-5 w-5 text-red-600" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-red-900">
+                                        {criticalType === 'low' ? 'Low' : 'High'} glucose alert
                                     </p>
-                                )}
+                                    <p className="text-sm text-red-700 mt-0.5">
+                                        Current: {currentGlucose} mg/dL — {criticalType === 'low' ? 'Below' : 'Above'} target.
+                                        {criticalMinutes > 0 && ` Critical for ${criticalMinutes} min.`}
+                                    </p>
+                                </div>
                             </div>
+                            {!emergencyCallSent && (
+                                <Button size="sm" variant="destructive" className="shrink-0" onClick={handleCallEmergencyNow} disabled={emergencyCalling}>
+                                    <Phone className="h-4 w-4 mr-2" />
+                                    {emergencyCalling ? 'Calling…' : 'Emergency'}
+                                </Button>
+                            )}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Chart Section */}
+                <Card className="rounded-2xl border-slate-100 shadow-sm overflow-hidden bg-white">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-slate-50">
+                        <CardTitle className="text-sm font-semibold text-slate-700">Glucose & Insulin Over Time</CardTitle>
+                        <div className="flex items-center gap-4 text-xs font-medium bg-slate-50 p-1 rounded-lg">
+                            <button className="px-3 py-1 rounded bg-white shadow-sm text-slate-800">1 hr</button>
+                            <button className="px-3 py-1 text-slate-500 hover:text-slate-800">6 hr</button>
+                            <button className="px-3 py-1 text-slate-500 hover:text-slate-800">24 hr</button>
                         </div>
-                        {!emergencyCallSent && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-red-300 text-red-700 hover:bg-red-100 shrink-0"
-                                onClick={handleCallEmergencyNow}
-                                disabled={emergencyCalling}
-                            >
-                                <Phone className="h-4 w-4 mr-2" />
-                                {emergencyCalling ? 'Calling…' : 'Call emergency now'}
-                            </Button>
-                        )}
-                        {emergencyCallSent && (
-                            <Badge className="bg-red-200 text-red-800 shrink-0">Emergency call sent</Badge>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h2>
-                    <p className="text-slate-500">Welcome back, {userName}</p>
-                </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <Button size="sm" className="flex-1 md:flex-none gap-2">
-                        <Plus className="h-4 w-4" /> Log Glucose
-                    </Button>
-                    <Button size="sm" variant="secondary" className="flex-1 md:flex-none gap-2">
-                        <Plus className="h-4 w-4" /> Add Meal
-                    </Button>
-                </div>
-            </div>
-
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MetricCard
-                    title="Avg Glucose"
-                    value={`${metrics.avgGlucose} mg/dL`}
-                    IconProp={Droplet}
-                    color="text-blue-500"
-                    bgColor="bg-blue-50"
-                />
-                <MetricCard
-                    title="Time in Range"
-                    value={metrics.timeInRange}
-                    IconProp={ActivityIcon}
-                    color="text-green-500"
-                    bgColor="bg-green-50"
-                />
-                <MetricCard
-                    title="Active Steps"
-                    value={metrics.steps.toLocaleString()}
-                    IconProp={Footprints}
-                    color="text-orange-500"
-                    bgColor="bg-orange-50"
-                />
-                <MetricCard
-                    title="Insulin on Board"
-                    value={`${metrics.insulinOnBoard} U`}
-                    IconProp={Syringe}
-                    color="text-purple-500"
-                    bgColor="bg-purple-50"
-                />
-            </div>
-
-            {/* Main Chart Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <GlucoseChart data={glucoseData} />
-                <MetabolicFactors />
-            </div>
-
-            {/* AI Brain Visual */}
-            <div className="grid grid-cols-1">
-                <AIBrainVisual />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                {/* Current Status Card */}
-                <Card className="col-span-1 bg-gradient-to-br from-primary-500 to-primary-600 text-white border-0 shadow-lg relative overflow-hidden">
-                    <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10 blur-xl"></div>
-                    <div className="absolute bottom-0 left-0 -mb-4 -ml-4 h-24 w-24 rounded-full bg-black/10 blur-xl"></div>
-                    <CardHeader>
-                        <CardTitle className="text-primary-100 relative z-10">Current Status</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex flex-col items-center justify-center py-8 relative z-10">
-                        <div className="text-6xl font-bold tracking-tighter mb-2">
-                            {currentGlucose}
+                    <CardContent className="p-0">
+                        {/* We will update GlucoseChart internally in the next step to match the aesthetic */}
+                        <div className="px-4 py-6">
+                            <GlucoseChart data={glucoseData} />
                         </div>
-                        <div className="text-xl font-medium text-primary-100 mb-6">
-                            mg/dL <span className="text-2xl ml-2">{trend}</span>
-                        </div>
-                        <Badge
-                            variant="secondary"
-                            className={
-                                criticalType === 'low'
-                                    ? 'bg-amber-500/80 text-white border-0 px-4 py-1.5 text-sm'
-                                    : criticalType === 'high'
-                                        ? 'bg-red-500/80 text-white border-0 px-4 py-1.5 text-sm'
-                                        : 'bg-white/20 hover:bg-white/30 text-white border-0 px-4 py-1.5 text-sm backdrop-blur-md'
-                            }
-                        >
-                            {criticalType === 'low' ? 'Low' : criticalType === 'high' ? 'High' : 'In Range'}
-                        </Badge>
-                        <p className="mt-8 text-sm text-primary-100 text-center">
-                            Predicted to stay stable for the next 2 hours based on recent activity.
-                        </p>
                     </CardContent>
                 </Card>
+
+                {/* 4-Grid Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Current Glucose */}
+                    <MetricCardLight 
+                        title="Current Glucose Levels"
+                        value={<>{currentGlucose}<span className="text-lg font-medium text-slate-500 ml-1">mg/dL</span></>}
+                        subtitle={<span className="text-slate-500">Stable · Last reading Just now</span>}
+                        iconBg="bg-blue-100 ring-4 ring-blue-50"
+                        icon={<Droplet className="h-5 w-5 text-blue-600" fill="currentColor" />}
+                    />
+                    
+                    {/* Insulin in Body */}
+                    <MetricCardLight 
+                        title="Insulin in Body"
+                        value={<>3.1<span className="text-lg font-medium text-slate-500 ml-1">u</span></>}
+                        subtitle={<span className="text-slate-500">Basal mode active</span>}
+                        iconBg="bg-rose-100 ring-4 ring-rose-50"
+                        icon={<ActivityIcon className="h-5 w-5 text-rose-500" />}
+                    />
+                    
+                    {/* Next Insulin Dose */}
+                    <MetricCardLight 
+                        title="Next Insulin Dose"
+                        value={<>2.0<span className="text-lg font-medium text-slate-500 ml-1">u</span></>}
+                        subtitle={<span className="text-slate-500">Scheduled for 12:30 PM</span>}
+                        iconBg="bg-emerald-100 ring-4 ring-emerald-50"
+                        icon={<Syringe className="h-5 w-5 text-emerald-600" />}
+                    />
+                    
+                    {/* Latest Warning */}
+                    <MetricCardLight 
+                        title="Latest Warning"
+                        value={
+                            <div className="flex items-end gap-2">
+                                <span>62<span className="text-lg font-medium text-slate-500 ml-1">mg/dL</span></span>
+                                <Badge className="bg-pink-100 text-pink-700 hover:bg-pink-100 mb-1 border-0">Low</Badge>
+                            </div>
+                        }
+                        subtitle={<span className="text-slate-500">Occurred 4:50 AM · Resolved 5:00 AM</span>}
+                        iconBg="bg-purple-100 ring-4 ring-purple-50"
+                        icon={<AlertTriangle className="h-5 w-5 text-purple-600" />}
+                    />
+                </div>
             </div>
 
-            {/* Quick Actions Row */}
-            <div>
-                <h3 className="text-lg font-semibold mb-3 text-slate-800">Quick Actions</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <QuickAction IconProp={Utensils} label="Add Meal" color="bg-emerald-100 text-emerald-700" />
-                    <QuickAction IconProp={Syringe} label="Insulin" color="bg-purple-100 text-purple-700" />
-                    <QuickAction IconProp={ActivityIcon} label="Exercise" color="bg-orange-100 text-orange-700" />
-                    <QuickAction IconProp={StressIcon} label="Stress" color="bg-rose-100 text-rose-700" />
+            {/* Right Column - Side Panel */}
+            <div className="w-full lg:w-80 space-y-6 flex-shrink-0">
+                
+                {/* User Profile Header Mini */}
+                <div className="hidden lg:flex justify-end items-center gap-3 mb-2">
+                    <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center relative shadow-sm">
+                         <div className="absolute top-0 right-0 h-2.5 w-2.5 bg-red-500 rounded-full border-2 border-white"></div>
+                         <AlertTriangle className="h-4 w-4 text-slate-600" />
+                    </div>
+                    <div className="px-4 py-2 bg-white rounded-full shadow-sm flex items-center gap-2 border border-slate-100">
+                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold overflow-hidden">
+                            <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${userName}`} alt="Avatar" />
+                        </div>
+                        <span className="font-semibold text-sm text-slate-800">{userName}</span>
+                    </div>
                 </div>
+
+                {/* Food Tracking Panel - Matches design */}
+                <Card className="rounded-[24px] bg-[#EAF3FE] border-0 shadow-none overflow-hidden">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2 pt-6 px-6">
+                        <CardTitle className="text-base font-bold text-slate-800">Food & Carb Tracking</CardTitle>
+                        <Button size="sm" className="h-8 text-xs rounded-full bg-slate-900 hover:bg-slate-800 text-white px-3 shadow-md">
+                            <Plus className="h-3 w-3 mr-1" /> Add log
+                        </Button>
+                    </CardHeader>
+                    <CardContent className="px-4 pb-6 pt-2 space-y-3">
+                        {/* Summary of limits integrated cleanly */}
+                        <div className="flex justify-between items-center px-2 mb-3">
+                            <div className="text-xs font-semibold text-slate-500">TODAY</div>
+                            <div className="text-xs font-bold text-blue-600">{todayTotals.totalCarbs}g / {userLimits.dailyCarbsLimit}g</div>
+                        </div>
+
+                        {/* Recent Meals Mockup inside container */}
+                        <MealItem time="9:20 AM" title="Oatmeal Breakfast" carbs="36g carbs" icon="🥣" color="bg-blue-100" />
+                        <MealItem time="9:20 AM" title="Orange Juice" carbs="27g carbs" icon="🍹" color="bg-orange-100" />
+                        <MealItem time="2:20 PM" title="Sandwich" carbs="32g carbs" icon="🥪" color="bg-emerald-100" />
+                    </CardContent>
+                </Card>
+
+                {/* Insulin Schedule Panel */}
+                <Card className="rounded-[24px] bg-gradient-to-b from-[#EAEUFD] to-[#E9EAFF] border-0 shadow-none overflow-hidden pb-4">
+                    <CardHeader className="pb-0 pt-6 px-6">
+                        <CardTitle className="text-base font-bold text-slate-800">Insulin Schedule</CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-4 pt-4">
+                        <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
+                            <div className="h-24 w-full flex justify-center items-center mb-4 relative">
+                                <div className="absolute top-2 left-1/4 animate-bounce shrink-0 delay-100 text-2xl">⏰</div>
+                                <div className="text-6xl z-10">💉</div>
+                                <div className="absolute bottom-2 right-1/4 animate-bounce shrink-0 text-3xl">💊</div>
+                            </div>
+                            <h4 className="text-lg font-bold text-slate-800 mb-6 leading-tight">
+                                The next insulin dose<br/>schedule is at 12:30.
+                            </h4>
+                            <Button className="w-full rounded-2xl h-12 bg-slate-900 hover:bg-slate-800 text-white font-semibold">
+                                I took the dose.
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
             </div>
         </div>
     );
 }
 
-function MetricCard({ title, value, IconProp, color, bgColor }) {
-    if (!IconProp) return null;
+function MetricCardLight({ title, value, subtitle, iconBg, icon }) {
     return (
-        <Card>
-            <CardContent className="p-4 flex flex-col justify-between h-full">
-                <div className="flex justify-between items-start mb-2">
-                    <div className={`p-2 rounded-lg ${bgColor} ${color}`}>
-                        <IconProp className="h-4 w-4" />
+        <Card className="rounded-2xl border-slate-100 shadow-sm bg-white hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                    <div className={`h-12 w-12 rounded-full flex items-center justify-center ${iconBg}`}>
+                        {icon}
+                    </div>
+                    <p className="font-semibold text-slate-600 text-sm">{title}</p>
+                </div>
+                <div className="mt-2">
+                    <div className="text-3xl font-bold text-slate-900 leading-none tracking-tight">
+                        {value}
                     </div>
                 </div>
-                <div>
-                    <div className="text-2xl font-bold text-slate-900">{value}</div>
-                    <p className="text-xs font-medium text-slate-500">{title}</p>
+                <div className="mt-4 text-xs font-medium">
+                    {subtitle}
                 </div>
             </CardContent>
         </Card>
     );
 }
 
-function QuickAction({ IconProp, label, color }) {
-    if (!IconProp) return null;
+function MealItem({ time, title, carbs, icon, color }) {
     return (
-        <button className={`flex flex-col items-center justify-center p-4 rounded-xl transition-transform hover:scale-105 active:scale-95 ${color}`}>
-            <IconProp className="h-6 w-6 mb-2" />
-            <span className="text-sm font-semibold">{label}</span>
-        </button>
-    )
+        <div className="bg-white rounded-[20px] p-4 flex items-center gap-4 shadow-sm">
+            <div className={`h-12 w-12 rounded-full flex items-center justify-center text-xl shrink-0 ${color}`}>
+                {icon}
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-slate-400 mb-0.5">{time}</p>
+                <div className="flex items-center gap-1.5 truncate">
+                    <span className="font-bold text-slate-800 text-sm truncate">{title}</span>
+                    <span className="text-xs font-medium text-slate-400 shrink-0">• {carbs}</span>
+                </div>
+            </div>
+        </div>
+    );
 }

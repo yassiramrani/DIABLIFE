@@ -1,53 +1,56 @@
-import { Home, LayoutDashboard, Utensils, Activity, User } from 'lucide-react';
+import { Home, LayoutDashboard, History, PlusSquare, Activity, User, Settings, Droplet } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../lib/utils';
 
 const navItems = [
-    { icon: Home, label: 'Home', path: '/' },
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: Utensils, label: 'Food Log', path: '/food-log' },
-    { icon: Activity, label: 'Insights', path: '/insights' },
+    { icon: History, label: 'Logs', path: '/food-history' },
+    { icon: PlusSquare, label: 'Meals', path: '/new-analysis' },
+    { icon: Activity, label: 'Health Hub', path: '/insights' },
     { icon: User, label: 'Profile', path: '/profile' },
 ];
 
 export default function Sidebar({ className }) {
     return (
-        <aside className={cn("p-4", className)}>
-            <div className="mb-8 flex items-center gap-2 px-2">
-                <div className="h-8 w-8 rounded-lg bg-primary-500 flex items-center justify-center">
-                    <Activity className="h-5 w-5 text-white" />
+        <aside className={cn("py-6 px-4 flex flex-col items-center bg-white", className)}>
+            <div className="mb-10 w-full flex items-center gap-3 px-2">
+                <div className="h-8 w-8 rounded-full bg-red-500 flex items-center justify-center shadow-sm">
+                    <Droplet className="h-5 w-5 fill-white text-white mt-0.5" />
                 </div>
-                <span className="font-bold text-xl text-slate-800">GlucoSmart</span>
+                <span className="font-bold text-lg text-slate-800 tracking-tight uppercase">DIABLIFE</span>
+                <div className="ml-auto w-8 h-4 bg-slate-200 rounded-full flex items-center px-0.5 shadow-inner">
+                    <div className="h-3 w-3 bg-white rounded-full shadow-sm"></div>
+                </div>
             </div>
 
-            <nav className="flex-1 space-y-1">
+            <nav className="flex-1 w-full space-y-2">
                 {navItems.map((item) => (
                     <NavLink
                         key={item.path}
                         to={item.path}
                         className={({ isActive }) =>
                             cn(
-                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors font-medium",
+                                "flex items-center gap-4 px-4 py-3 rounded-2xl transition-all font-semibold text-sm",
                                 isActive
-                                    ? "bg-primary-50 text-primary-700"
-                                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                                    ? "bg-[#D8EEFC] text-slate-800 shadow-sm"
+                                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                             )
                         }
                     >
-                        <item.icon className="h-5 w-5" />
+                        <item.icon className={cn("h-5 w-5", "text-slate-400")} />
                         {item.label}
                     </NavLink>
                 ))}
             </nav>
 
-            <div className="mt-auto border-t border-slate-200 pt-4">
-                <div className="px-3 py-2">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">My Device</p>
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                        Connected: CGM
-                    </div>
-                </div>
+            <div className="mt-auto w-full pt-4">
+                <NavLink
+                    to="/settings"
+                    className="flex items-center gap-4 px-4 py-3 rounded-2xl transition-all font-semibold text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                >
+                    <Settings className="h-5 w-5 text-slate-400" />
+                    Settings
+                </NavLink>
             </div>
         </aside>
     );

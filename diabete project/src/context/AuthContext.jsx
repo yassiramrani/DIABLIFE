@@ -4,7 +4,9 @@ import {
     signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    updateProfile
+    updateProfile,
+    setPersistence,
+    browserSessionPersistence
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
@@ -15,11 +17,19 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-            setLoading(false);
-        });
-        return () => unsubscribe();
+        // Set persistence to session only (closes when tab/browser closes) before attaching listener
+        setPersistence(auth, browserSessionPersistence)
+            .then(() => {
+                const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+                    setUser(currentUser);
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            })
+            .catch((error) => {
+                console.error("Error setting auth persistence:", error);
+                setLoading(false);
+            });
     }, []);
 
     const login = (email, password) => {
