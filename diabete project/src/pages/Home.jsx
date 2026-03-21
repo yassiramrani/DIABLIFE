@@ -17,15 +17,21 @@ export default function Home() {
     if (loading) return null;
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-950 text-slate-50 relative overflow-hidden">
+        <div 
+            className="flex flex-col min-h-screen text-slate-50 relative overflow-hidden bg-cover bg-center bg-no-repeat bg-fixed"
+            style={{ backgroundImage: "url('/images/diabetes-bg.png')" }}
+        >
+            {/* Dark overlay to ensure text readability over the photo */}
+            <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-sm"></div>
+
             {/* Background Effects */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary-600/30 blur-[120px] rounded-full pointer-events-none"></div>
-            <div className="absolute bottom-0 right-0 w-[600px] h-[500px] bg-rose-600/20 blur-[100px] rounded-full pointer-events-none"></div>
+            <div className="absolute bottom-0 right-0 w-[600px] h-[500px] bg-secondary-600/20 blur-[100px] rounded-full pointer-events-none"></div>
 
             <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-12 lg:py-24">
                 
                 {/* Hero Section */}
-                <div className="text-center max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <div className="text-center max-w-4xl mx-auto space-y-8">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-primary-300 text-sm font-medium backdrop-blur-md">
                         <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
@@ -35,7 +41,7 @@ export default function Home() {
                     </div>
                     
                     <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight">
-                        Empower your <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-rose-400">DIABLIFE</span>
+                        Empower your <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-secondary-400">DIABLIFE</span>
                     </h1>
                     
                     <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
@@ -44,7 +50,7 @@ export default function Home() {
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                         <Link to="/signup">
-                            <Button size="lg" className="w-full sm:w-auto text-lg h-14 px-8 rounded-full bg-primary-600 hover:bg-primary-500 shadow-[0_0_40px_-10px_rgba(59,130,246,0.6)] border border-primary-400/50">
+                            <Button size="lg" className="w-full sm:w-auto text-lg h-14 px-8 rounded-full bg-primary-600 hover:bg-primary-500 shadow-[0_0_40px_-10px_rgba(13,148,136,0.6)] border border-primary-400/50">
                                 Get Started Free <ArrowRight className="ml-2 h-5 w-5" />
                             </Button>
                         </Link>
@@ -59,7 +65,7 @@ export default function Home() {
                 {/* Glassmorphism Dashboard Preview Mock / Stats */}
                 <div className="mt-24 mb-32 relative mx-auto max-w-5xl">
                     <div className="absolute inset-0 bg-gradient-to-b from-primary-500/20 to-transparent blur-3xl rounded-3xl -z-10"></div>
-                    <div className="rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-2 md:p-4 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300">
+                    <div className="rounded-3xl border border-white/10 bg-slate-900/60 backdrop-blur-xl p-2 md:p-4 shadow-2xl overflow-hidden">
                         <div className="rounded-2xl bg-slate-950 border border-white/5 p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
                             
                             <div className="space-y-4">
@@ -73,8 +79,8 @@ export default function Home() {
                             </div>
 
                             <div className="space-y-4">
-                                <div className="h-12 w-12 rounded-2xl bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
-                                    <ActivityIcon className="h-6 w-6 text-rose-400" />
+                                <div className="h-12 w-12 rounded-2xl bg-primary-500/20 flex items-center justify-center border border-primary-500/30">
+                                    <ActivityIcon className="h-6 w-6 text-primary-400" />
                                 </div>
                                 <h3 className="text-xl font-bold text-white">Live Pump Sync</h3>
                                 <p className="text-slate-400 text-sm leading-relaxed">
@@ -100,7 +106,7 @@ export default function Home() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center max-w-5xl mx-auto pb-24">
                     <div className="space-y-6">
                         <div className="inline-flex items-center justify-center p-3 bg-white/5 rounded-2xl border border-white/10">
-                            <Droplet className="h-6 w-6 text-rose-400" />
+                            <Droplet className="h-6 w-6 text-secondary-400" />
                         </div>
                         <h2 className="text-3xl md:text-4xl font-bold text-white leading-tight">
                             Your complete health <br/> command center
@@ -127,7 +133,7 @@ export default function Home() {
                         </ul>
                     </div>
                     <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-primary-600/20 to-rose-600/20 blur-3xl rounded-full"></div>
+                        <div className="absolute inset-0 bg-gradient-to-tr from-primary-600/20 to-secondary-600/20 blur-3xl rounded-full"></div>
                         <div className="relative h-80 rounded-[2rem] border border-white/10 bg-slate-900/80 backdrop-blur-md p-8 shadow-2xl flex flex-col items-center justify-center gap-4">
                             <div className="flex items-center gap-4 text-4xl font-bold text-white">
                                 98 <span className="text-lg text-slate-400 font-medium tracking-normal">mg/dL</span>

@@ -29,13 +29,17 @@ export default function FoodHistory() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-12">
-            <div>
-                <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                    <History className="h-6 w-6 text-primary-500" />
-                    Food History
-                </h2>
-                <p className="text-slate-500">Your recently analyzed and logged meals.</p>
+        <div className="max-w-4xl mx-auto space-y-8 pb-16">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-6 ml-2">
+                <div>
+                    <h2 className="text-3xl font-extrabold text-slate-800 flex items-center gap-3 tracking-tight">
+                        <div className="p-2 bg-primary-100 rounded-xl">
+                            <History className="h-7 w-7 text-primary-600" />
+                        </div>
+                        Food History
+                    </h2>
+                    <p className="text-slate-500 font-medium mt-1">Review your recently analyzed and logged meals.</p>
+                </div>
             </div>
 
             {isLoading ? (
@@ -49,42 +53,59 @@ export default function FoodHistory() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="space-y-4">
-                    {logs.map(log => (
-                        <Card key={log.id} className="overflow-hidden">
-                            <CardHeader className="bg-slate-50 border-b border-slate-100 py-3 px-4 flex flex-row items-center justify-between">
-                                <CardTitle className="text-base font-semibold text-slate-800">
-                                    {log.meal_summary || 'Analyzed Meal'}
-                                </CardTitle>
-                                <span className="text-xs text-slate-500 font-medium">
-                                    {log.createdAt ? new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Unknown time'}
-                                </span>
-                            </CardHeader>
-                            <CardContent className="p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <div className="col-span-1 md:col-span-2">
-                                    <div className="flex gap-2 flex-wrap mb-2">
-                                        {log.components?.map((c, i) => (
-                                            <Badge key={i} variant="secondary" className="bg-slate-100 text-slate-600 font-normal">
-                                                {c.name}
-                                            </Badge>
-                                        ))}
+                <div className="grid grid-cols-1 gap-6">
+                    {logs.map(log => {
+                        const risk = log.diasense_advice?.risk_level || log.riskLevel || 'Unknown';
+                        const isHigh = risk.toLowerCase().includes('high');
+                        const isMed = risk.toLowerCase().includes('medium') || risk.toLowerCase().includes('moderate');
+                        const borderColor = isHigh ? 'border-l-red-500' : isMed ? 'border-l-orange-500' : 'border-l-primary-500';
+                        
+                        return (
+                        <div key={log.id} className={`bg-white rounded-[2rem] overflow-hidden border border-slate-200 border-l-8 ${borderColor} shadow-sm transition-shadow hover:shadow-md duration-300`}>
+                            <div className="p-6 md:p-8">
+                                <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
+                                    <div className="flex-1 space-y-1">
+                                        <div className="flex items-center gap-3 flex-wrap">
+                                            <h3 className="text-xl font-bold text-slate-800 leading-tight">
+                                                {log.meal_summary || 'Analyzed Meal'}
+                                            </h3>
+                                            <span className="px-3 py-1 rounded-full bg-slate-100/80 text-slate-500 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                {log.createdAt ? new Date(log.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                                            </span>
+                                        </div>
+                                        <div className="flex gap-2 flex-wrap pt-1">
+                                            {log.components?.slice(0, 5).map((c, i) => (
+                                                <span key={i} className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-primary-50/50 text-primary-700 border border-primary-100/30">
+                                                    {c.name}
+                                                </span>
+                                            ))}
+                                            {(log.components?.length > 5) && (
+                                                <span className="text-[11px] font-medium text-slate-400">+{log.components.length - 5} more</span>
+                                            )}
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-slate-500 line-clamp-2">
-                                        {log.diasense_advice?.prediction || log.predictionText || log.advice || 'No prediction available'}
+                                    
+                                    <div className="shrink-0 flex md:flex-col items-center gap-3">
+                                        <div className="bg-white/90 backdrop-blur-md rounded-2xl px-4 py-2 shadow-sm border border-slate-100 text-center min-w-[100px]">
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">Total Carbs</div>
+                                            <div className="text-xl font-black text-slate-900">{log.total_carbs_est || log.totalCarbs || 0}<span className="text-sm font-bold ml-0.5">g</span></div>
+                                        </div>
+                                        <div className={`px-4 py-2 rounded-2xl border text-center font-bold text-xs capitalize ${getRiskColor(risk)}`}>
+                                            {risk} Risk
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 relative">
+                                    <p className="text-sm text-slate-600 leading-relaxed italic font-medium">
+                                        "{log.diasense_advice?.prediction || log.predictionText || log.advice || 'Nutritional analysis completed.'}"
                                     </p>
                                 </div>
-                                <div className="text-center md:text-right flex flex-row md:flex-col justify-around md:justify-end md:gap-1">
-                                    <div className="flex items-center gap-1 justify-center md:justify-end font-bold text-slate-900">
-                                        <Flame className="h-4 w-4 text-orange-500" />
-                                        {log.total_carbs_est || log.totalCarbs || 0}g Carbs
-                                    </div>
-                                    <div className={`text-xs font-semibold px-2 py-1 rounded inline-block ${getRiskColor(log.diasense_advice?.risk_level || log.riskLevel)}`}>
-                                        {log.diasense_advice?.risk_level || log.riskLevel || 'Unknown'} Risk
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                            </div>
+                        </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

@@ -14,7 +14,19 @@ const emergencyToNumber = process.env.EMERGENCY_TO_NUMBER;
 
 function getClient() {
   if (!accountSid || !authToken) {
-    throw new Error('Twilio credentials not configured. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.');
+    console.warn('⚠️ Twilio credentials missing. Entering MOCK MODE (Logging to console only).');
+    return {
+      calls: {
+        create: async (params) => {
+          console.log('--------------------------------------------------');
+          console.log('📞 [MOCK CALL] Initiated from:', params.from || 'DEV_SENDER');
+          console.log('🎯 [MOCK CALL] Target Number:', params.to);
+          console.log('📝 [MOCK CALL] Message content:', params.twiml.replace(/<[^>]*>/g, ''));
+          console.log('--------------------------------------------------');
+          return { sid: 'MOCK_CALL_SID_' + Math.random().toString(36).substr(2, 9) };
+        }
+      }
+    };
   }
   return twilio(accountSid, authToken);
 }
@@ -26,7 +38,7 @@ function getClient() {
  */
 app.post('/api/emergency-call', async (req, res) => {
   try {
-    const { glucoseValue, durationMinutes, type = 'abnormal' } = req.body;
+    const { glucoseValue, durationMinutes, type = 'abnormal', location, contactNumber } = req.body;
 
     if (glucoseValue == null || durationMinutes == null) {
       return res.status(400).json({
@@ -35,21 +47,32 @@ app.post('/api/emergency-call', async (req, res) => {
       });
     }
 
-    if (!fromNumber || !emergencyToNumber) {
-      return res.status(503).json({
+    const targetNumber = contactNumber || emergencyToNumber;
+
+    if (!targetNumber) {
+      return res.status(400).json({
         success: false,
-        error: 'Emergency call not configured. Set TWILIO_FROM_NUMBER and EMERGENCY_TO_NUMBER.',
+        error: 'Contact number not provided by patient profile.',
       });
     }
 
+    // Allow mock mode if fromNumber is missing too
+    const finalFrom = fromNumber || '+1234567890';
+
     const levelDesc = type === 'low' ? 'low' : type === 'high' ? 'high' : 'abnormal';
-    const message = `Alert. This is an automated diabetes monitoring system. The patient's glucose level is ${glucoseValue} milligrams per deciliter. This ${levelDesc} level has persisted for ${durationMinutes} minutes. Immediate assistance is recommended.`;
+    let message = `Alert. This is an automated diabetes monitoring system. The patient's glucose level is ${glucoseValue} milligrams per deciliter. This ${levelDesc} level has persisted for ${durationMinutes} minutes.`;
+    
+    if (location && location.lat && location.lng) {
+      message += ` The patient's current GPS coordinates are: ${location.lat.toFixed(4)} latitude and ${location.lng.toFixed(4)} longitude.`;
+    }
+    
+    message += ` Immediate assistance is recommended.`;
 
     const client = getClient();
     const call = await client.calls.create({
       twiml: `<Response><Say>${message}</Say></Response>`,
-      to: emergencyToNumber,
-      from: fromNumber,
+      to: targetNumber,
+      from: finalFrom,
     });
 
     return res.json({

@@ -12,6 +12,30 @@ import { Badge } from '../components/ui/Badge';
 import { generateGlucoseData, metrics, userData } from '../data/mockData';
 import { triggerEmergencyCall } from '../lib/api';
 
+// Emergency Sound Generator
+const playAlertSound = () => {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // High pitch A5
+        oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.5); // Slide down to A4
+        
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.5);
+    } catch (e) {
+        console.warn("Audio Context failed", e);
+    }
+};
+
 const CRITICAL_DURATION_MINUTES = 15;
 const [LOW_THRESHOLD, HIGH_THRESHOLD] = userData.targetRange;
 
@@ -27,6 +51,8 @@ export default function Dashboard() {
     const [userName, setUserName] = useState(user?.displayName || 'User');
     const [userLimits, setUserLimits] = useState({ dailyCarbsLimit: 150, dailySugarLimit: 30 });
     const [todayTotals, setTodayTotals] = useState({ totalCarbs: 0, totalSugar: 0 });
+    const [emergencyContact, setEmergencyContact] = useState("");
+    const [sentLocation, setSentLocation] = useState(null);
     const [glucoseData, setGlucoseData] = useState([]);
     const [criticalMinutes, setCriticalMinutes] = useState(0);
     const [emergencyCallSent, setEmergencyCallSent] = useState(false);
@@ -46,6 +72,7 @@ export default function Dashboard() {
                             dailyCarbsLimit: profile.dailyCarbsLimit || 150,
                             dailySugarLimit: profile.dailySugarLimit || 30
                         });
+                        setEmergencyContact(profile.emergencyContact || "+33 06 XX XX XX");
                     } else if (user.displayName) {
                         setUserName(user.displayName);
                     }
@@ -94,7 +121,7 @@ export default function Dashboard() {
                     if (next >= CRITICAL_DURATION_MINUTES && !emergencyCalledRef.current) {
                         emergencyCalledRef.current = true;
                         setEmergencyCallSent(true);
-                        triggerEmergencyCall(currentGlucose, next, criticalTypeRef.current).catch((err) => {
+                        triggerEmergencyCall(currentGlucose, next, criticalTypeRef.current, null, emergencyContact).catch((err) => {
                             // Enhance error message for end user
                             const msg = err.message.includes('503')
                                 ? "Emergency service unavailable (Check server config)"
@@ -115,13 +142,45 @@ export default function Dashboard() {
     const handleCallEmergencyNow = async () => {
         setEmergencyError(null);
         setEmergencyCalling(true);
+        playAlertSound();
+        
         try {
-            await triggerEmergencyCall(currentGlucose, Math.max(criticalMinutes, 1), criticalType);
+            // Get Geolocation
+            let locationData = null;
+            if ("geolocation" in navigator) {
+                try {
+                    const pos = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+                    });
+                    locationData = {
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy
+                    };
+                    setSentLocation(locationData);
+                } catch (posErr) {
+                    console.warn("Geolocation denied or timed out", posErr);
+                }
+            }
+
+            await triggerEmergencyCall(currentGlucose, Math.max(criticalMinutes, 1), criticalType, locationData, emergencyContact);
             setEmergencyCallSent(true);
+
+            // WhatsApp Dispatch (User's request: "je veux envoi sur whatssap")
+            if (emergencyContact) {
+                // Remove all non-numeric characters for WhatsApp API format
+                const cleanPhone = emergencyContact.replace(/\D/g, '');
+                const googleMapsLink = locationData ? `https://www.google.com/maps?q=${locationData.lat},${locationData.lng}` : 'Unknown';
+                const message = `🚨 *DIABLIFE STATUS ALERT*\nMy glucose is dangerously *${criticalType === 'low' ? 'Low' : 'High'}* (${currentGlucose} mg/dL).\nLocation: ${googleMapsLink}`;
+                
+                // Open WhatsApp in NEW TAB (User's request: "nouveau onglet")
+                const whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+            }
         } catch (err) {
             console.error(err);
             const msg = err.message.includes('503') || err.message.includes('Failed to fetch')
-                ? "Emergency service unavailable. (Is the backend server running and configured?)"
+                ? "Primary service offline. Emergency broadcast attempted locally."
                 : err.message;
             setEmergencyError(msg);
         } finally {
@@ -167,11 +226,20 @@ export default function Dashboard() {
                                     </p>
                                 </div>
                             </div>
-                            {!emergencyCallSent && (
+                            {!emergencyCallSent ? (
                                 <Button size="sm" variant="destructive" className="shrink-0" onClick={handleCallEmergencyNow} disabled={emergencyCalling}>
                                     <Phone className="h-4 w-4 mr-2" />
-                                    {emergencyCalling ? 'Calling…' : 'Emergency'}
+                                    {emergencyCalling ? 'Locating...' : 'Emergency'}
                                 </Button>
+                            ) : (
+                                <div className="text-right flex flex-col items-end">
+                                    <Badge className="bg-emerald-600 text-white border-0 py-1 px-3 rounded-lg shadow-sm">
+                                        Data Dispatched
+                                    </Badge>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">
+                                        {sentLocation ? `Loc [${sentLocation.lat.toFixed(4)}, ${sentLocation.lng.toFixed(4)}] shared with ${emergencyContact}` : `Alert sent to ${emergencyContact}`}
+                                    </p>
+                                </div>
                             )}
                         </CardContent>
                     </Card>

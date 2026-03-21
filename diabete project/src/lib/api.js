@@ -6,7 +6,7 @@ import { API_BASE } from './env';
  * @param {number} durationMinutes - Minutes the level has been critical
  * @param {'low'|'high'} type - Whether it's hypoglycemia or hyperglycemia
  */
-export async function triggerEmergencyCall(glucoseValue, durationMinutes, type = 'abnormal') {
+export async function triggerEmergencyCall(glucoseValue, durationMinutes, type = 'abnormal', location = null, contactNumber = null) {
   const res = await fetch(`${API_BASE}/api/emergency-call`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -14,6 +14,8 @@ export async function triggerEmergencyCall(glucoseValue, durationMinutes, type =
       glucoseValue: Number(glucoseValue),
       durationMinutes: Number(durationMinutes),
       type,
+      location: location || null,
+      contactNumber: contactNumber || null,
     }),
   });
   const data = await res.json();

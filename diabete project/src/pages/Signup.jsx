@@ -16,7 +16,7 @@ export default function Signup() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { register } = useAuth();
+    const { register, logout } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -45,7 +45,8 @@ export default function Signup() {
                     diabetesType
                 });
 
-                navigate('/dashboard');
+                await logout();
+                navigate('/login');
             } catch (profileErr) {
                 // Rollback: If Firestore fails (e.g. rules issue), delete the auth user
                 await deleteUser(user).catch(console.error);
@@ -60,8 +61,15 @@ export default function Signup() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-            <Card className="w-full max-w-md">
+        <div
+            className="flex items-center justify-center min-h-screen bg-cover bg-center bg-no-repeat relative"
+            style={{ backgroundImage: "url('/images/diabetes-bg.png')" }}
+        >
+            {/* Removed overlay for maximum clarity */}
+            <div className="absolute inset-0"></div>
+
+            {/* Relative positioning to sit above the absolute overlay */}
+            <Card className="w-full max-w-md relative z-10 glass-card">
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
                     <CardDescription>

@@ -220,14 +220,14 @@ export default function NewAnalysis() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500 pb-12">
+        <div className="max-w-3xl mx-auto space-y-8 pb-12">
             <div className="text-center space-y-2">
                 <h2 className="text-3xl font-bold tracking-tight">New Analysis</h2>
                 <p className="text-slate-500">Log your meals and get AI-powered glucose predictions.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="h-full">
+            <div className="max-w-2xl mx-auto flex flex-col gap-8">
+                <Card className="w-full shadow-sm">
                     <CardHeader>
                         <CardTitle>Capture Meal</CardTitle>
                         <CardDescription>Upload a photo or search specifically.</CardDescription>
@@ -338,61 +338,75 @@ export default function NewAnalysis() {
                             {prediction.type === 'ai' ? (
                                 <>
                                     {/* Summary Card */}
-                                    <Card className="border-l-4 border-l-primary-500 overflow-hidden">
-                                        <div className="bg-primary-50 px-6 py-4 border-b border-primary-100">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className="font-bold text-lg text-primary-900">{prediction.summary}</h3>
-                                                    <Badge variant="outline" className="mt-1 bg-white text-primary-700 border-primary-200">
-                                                        AI Confidence High
+                                    <div className="relative rounded-3xl overflow-hidden shadow-md bg-white border border-slate-200">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-white -z-10"></div>
+                                        <div className="p-6 md:p-8 space-y-6">
+                                            {/* Header Layer */}
+                                            <div className="flex flex-col md:flex-row justify-between items-start gap-4 border-b border-slate-200/60 pb-6">
+                                                <div className="flex-1">
+                                                    <Badge className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white shadow-sm mb-3 border-0">
+                                                        AI Analysis Complete
                                                     </Badge>
+                                                    <p className="font-semibold text-lg text-slate-700 leading-relaxed">
+                                                        {prediction.summary}
+                                                    </p>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs text-primary-600 font-semibold uppercase tracking-wider">Metabolic Score</div>
-                                                    <div className={`text-2xl font-bold ${getScoreColor(prediction.score)}`}>{prediction.score}/100</div>
+                                                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 min-w-[130px] text-center shrink-0">
+                                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Metabolic Score</div>
+                                                    <div className={`text-4xl font-extrabold tracking-tighter ${getScoreColor(prediction.score)}`}>
+                                                        {prediction.score}<span className="text-xl text-slate-300">/100</span>
+                                                    </div>
                                                 </div>
+                                            </div>
+
+                                            {/* Key Metrics Widgets */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-center items-center text-center">
+                                                    <div className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Total Carbs</div>
+                                                    <div className="text-3xl font-black text-slate-900">{prediction.totalCarbs}<span className="text-[18px] font-bold text-slate-400 ml-1">g</span></div>
+                                                </div>
+                                                <div className={`rounded-2xl p-5 border shadow-sm flex flex-col justify-center items-center text-center ${getRiskColor(prediction.riskLevel)}`}>
+                                                    <div className="text-xs opacity-70 font-bold uppercase tracking-wider mb-2">Risk Level</div>
+                                                    <div className="text-2xl font-black capitalize tracking-tight">{prediction.riskLevel}</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Insights */}
+                                            <div className="space-y-4">
+                                                <div className="bg-primary-50/40 rounded-2xl p-6 border border-primary-200/50 relative overflow-hidden">
+                                                    <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary-200/40 rounded-full blur-2xl"></div>
+                                                    <h4 className="font-bold text-primary-900 flex items-center gap-2 mb-3 relative z-10">
+                                                        <Info className="h-5 w-5 text-primary-500" /> Clinical Insight
+                                                    </h4>
+                                                    <p className="text-primary-800 leading-relaxed relative z-10 font-medium text-[15px]">
+                                                        {prediction.predictionText}
+                                                    </p>
+                                                </div>
+
+                                                <div className="bg-[#eff6ff]/80 rounded-2xl p-6 border border-blue-100/50 shadow-sm">
+                                                    <h4 className="font-bold text-blue-900 flex items-center gap-2 mb-3">
+                                                        <Activity className="h-5 w-5 text-blue-500" /> Bolus Strategy
+                                                    </h4>
+                                                    <p className="text-blue-800 flex items-start leading-relaxed font-medium text-[15px]">
+                                                        {prediction.bolusStrategy}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Button */}
+                                            <div className="pt-4">
+                                                {!prediction.isSaved ? (
+                                                    <Button onClick={handleSaveMeal} isLoading={isSaving} className="w-full h-14 text-base rounded-xl bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700 shadow-md hover:shadow-lg transition-all border-0 text-white font-bold">
+                                                        <Save className="mr-2 h-5 w-5" /> Save to History
+                                                    </Button>
+                                                ) : (
+                                                    <div className="w-full h-14 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 font-bold rounded-xl border border-emerald-200 shadow-inner">
+                                                        <Check className="h-5 w-5" /> Saved Successfully
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
-                                        <CardContent className="p-6 space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                                    <div className="text-xs text-slate-500 uppercase font-bold">Total Carbs</div>
-                                                    <div className="text-xl font-bold text-slate-900">{prediction.totalCarbs}g</div>
-                                                </div>
-                                                <div className={`p-3 rounded-lg border ${getRiskColor(prediction.riskLevel)}`}>
-                                                    <div className="text-xs opacity-75 uppercase font-bold">Risk Level</div>
-                                                    <div className="text-xl font-bold">{prediction.riskLevel}</div>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <h4 className="font-semibold text-sm text-slate-700 flex items-center">
-                                                    <Info className="h-4 w-4 mr-1.5 text-primary-500" />
-                                                    Clinical Insight
-                                                </h4>
-                                                <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-100 italic">
-                                                    "{prediction.predictionText}"
-                                                </p>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <h4 className="font-semibold text-sm text-slate-700">Bolus Strategy</h4>
-                                                <div className="text-sm text-slate-800 font-medium bg-blue-50 text-blue-800 p-3 rounded-md border border-blue-100">
-                                                    {prediction.bolusStrategy}
-                                                </div>
-                                            </div>
-
-                                            {!prediction.isSaved ? (
-                                                <Button onClick={handleSaveMeal} isLoading={isSaving} className="w-full mt-4" variant="default">
-                                                    <Save className="mr-2 h-4 w-4" /> Save to History
-                                                </Button>
-                                            ) : (
-                                                <div className="p-3 bg-green-50 text-green-700 rounded-md border border-green-200 flex items-center justify-center font-medium mt-4">
-                                                    <Check className="mr-2 h-4 w-4" /> Saved Successfully
-                                                </div>
-                                            )}
-                                        </CardContent>
-                                    </Card>
+                                    </div>
 
                                     {/* Breakdown List */}
                                     <Card>
@@ -461,7 +475,7 @@ export default function NewAnalysis() {
             )}
             
             {successMsg && (
-                <div className="fixed bottom-4 right-4 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-lg shadow-xl animate-in slide-in-from-bottom-2 z-50 flex items-center gap-3">
+                <div className="fixed bottom-4 right-4 bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-lg shadow-xl z-50 flex items-center gap-3">
                     <Check className="h-5 w-5" />
                     <span>{successMsg}</span>
                     <button onClick={() => setSuccessMsg(null)} className="ml-4 text-green-600 hover:text-green-800 font-bold">&times;</button>

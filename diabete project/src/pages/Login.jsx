@@ -30,8 +30,15 @@ export default function Login() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-            <Card className="w-full max-w-md">
+        <div
+            className="flex items-center justify-center min-h-screen bg-cover bg-center bg-no-repeat relative"
+            style={{ backgroundImage: "url('/images/diabetes-bg.png')" }}
+        >
+            {/* Removed overlay for maximum clarity */}
+            <div className="absolute inset-0"></div>
+
+            {/* Relative positioning to sit above the absolute overlay */}
+            <Card className="w-full max-w-md relative z-10 glass-card">
                 <CardHeader className="space-y-1">
                     <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
                     <CardDescription>
